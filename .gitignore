@@ -2,6 +2,9 @@
 *.jpeg
 data/
 
+# VSC project
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
