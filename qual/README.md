@@ -9,10 +9,10 @@
 
 The competition time was restricted to 4 hours only. There have been 4 tasks in total, task description is available in Russion only :( ):
 
-* A. [Binary classifier (Catboost)](A)
-* B. [Classification with constraints](B)
-* C. [Classification of blured images](C)
-* D. [Beta distrivution](D)
+* A. [Binary classifier (Catboost)](A.md)
+* B. [Classification with constraints](B.md)
+* C. [Classification of blured images](C.md)
+* D. [Beta distrivution](D.md)
 
 I managed to solve only the task A (the simplest) and tried without success D.
 Short description of the solution logic follows.

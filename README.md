@@ -3,6 +3,6 @@ Task and private solutions for the stages of the [yandex cup 2020](https://yande
 
 The competition was taking place in 3 steps:
 
-* [Trial](trial/README)
-* [Qualification](qual/README)
-* [Final](final/README)
+* [Trial](trial/README.md)
+* [Qualification](qual/README.md)
+* [Final](final/README.md)
