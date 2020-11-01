@@ -20,7 +20,17 @@ Short description of the solution logic follows.
 ## Solution A
 
 The task was to find better hyperparameters for catboost GBM on predefined data.
+I did not have prior experience with catboost,
+but the data seemed to not have any categorical variables. 
+Therefore, I decided to treat the model configuration as any other GBM (e.g. lightgbm/xgboost).
 
+The good starting point typically is:
+
+* learning rate of _0.1_
+* number of trees of the order of _100_
+* feature and row sampling of around _0.75_
+
+The solution is available in [A.py](./A.py)
 The final submitted parameters are availablle in [A_params.json](./A_params.json)
 
 ## Solution B (attempt)
