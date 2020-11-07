@@ -11,6 +11,9 @@
 import sys
 from final.solution import cast_line_elements
 
+from sklearn.metrics import f1_score
+
+import numpy as np
 
 class Verdict:
     OK = 0
@@ -30,7 +33,9 @@ def main():
             for j, x in enumerate(targets):
                 if x:
                     actual_positives[j] += 1
+    y = np.array(test_targets)
 
+    preds_index = []
     with open(sys.argv[2], 'r') as output_file:
         answer_counts = cast_line_elements(output_file.readline(), int)
         assert len(answer_counts) == target_count
@@ -49,17 +54,15 @@ def main():
                 predicted_positives[target_num] += 1
                 if test_targets[index][target_num]:
                     true_positives[target_num] += 1
-        f_score = 0
-        scores = []
-        for target_num in range(target_count):
-            p = float(true_positives[target_num]) / answer_counts[target_num]
-            r = float(true_positives[target_num]) / actual_positives[target_num]
-            if true_positives[target_num]:
-                f1 = 2 * p * r / (p + r)
-                scores.append(f1)
-                f_score += f1 / target_count
-    print('%.6f' % f_score)
-    print([round(x,3) for x in scores])
+            preds_index.append(list(indexes))
+
+    # compute the score
+    preds = np.zeros_like(y)
+    for t in range(target_count):
+        preds[preds_index[t], t] = 1
+    metric = f1_score(y, preds, average=None)
+    print(f"{np.mean(metric):.6f}: {metric}", file=sys.stderr)
+
     sys.exit(Verdict.OK)
 
 if __name__ == '__main__':
