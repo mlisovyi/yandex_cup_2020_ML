@@ -148,7 +148,7 @@ def evaluate_model(mdl, X, y):
 
     # mdl.fit(train_data_categories, train_data_targets)
 
-    print(f"{np.mean(metric)}: {metric}", file=sys.stderr)
+    print(f"{np.mean(metric):.6f}: {metric}", file=sys.stderr)
     return mdl
 
 
@@ -162,8 +162,8 @@ def main():
     )
 
     mdl = Baseline(T, C, [2, 3])
-    evaluate_model(mdl, train_data_categories, train_data_targets)
-    mdl.fit(train_data_categories, train_data_targets)
+    mdl = evaluate_model(mdl, train_data_categories, train_data_targets)
+    # mdl.fit(train_data_categories, train_data_targets)
 
     print("test")
     sys.stdout.flush()
