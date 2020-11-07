@@ -2,12 +2,12 @@ import sys
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Dict, List, Optional, Tuple, Union
+import os
 
 import numpy as np
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-
 
 
 def read_train_data(
@@ -25,7 +25,6 @@ def read_train_data(
         data_categories.append(cast_line_elements(input_line[T : T + C], int))
         data_vectors.append(cast_line_elements(input_line[T + C :], float))
     return data_targets, data_categories, data_vectors
-
 
 
 def make_dict_key(categories, one_comb, C):
@@ -58,7 +57,6 @@ def prepare_statistic_dict(
                 map(sum, zip(targets, statistic_dict[dict_key]["target_items"]))
             )
     return statistic_dict
-
 
 
 def cast_line_elements(line, type_):
@@ -113,7 +111,13 @@ class Baseline:
 class RFModel:
     T: int
     C: int
-    mdl: RandomForestClassifier = RandomForestClassifier(n_estimators=10, max_depth=4)
+    mdl: RandomForestClassifier = RandomForestClassifier(
+        n_estimators=250,
+        max_depth=20,
+        class_weight="balanced_subsample",#["balanced", "balanced", "balanced"],
+        random_state=314,
+        n_jobs=-2
+    )
 
     def fit(self, X, y, **kwargs):
         self.mdl = self.mdl.fit(X, y, **kwargs)
@@ -126,19 +130,26 @@ class RFModel:
         return self.predict([X])[0]
 
 
-def evaluate_model(mdl, X, y):
+def split_data_and_evaluate_model(mdl, X, y, retrain: bool = False):
     X_trn, X_tst, y_trn, y_tst = train_test_split(X, y, test_size=0.2, random_state=314)
 
-    # evaluate on hold-out set
-    mdl.fit(X_trn, y_trn)
-    preds = mdl.predict(X_tst)
-    metric = f1_score(y_tst, preds, average=None)  # "macro" / None
-    print(f"{np.mean(metric):.6f}: {metric}", file=sys.stderr)
-
-    # retrain on full data
-    mdl.fit(X, y)
+    mdl = evaluate_model(mdl, X_trn, y_trn, X_tst, y_tst, retrain)
     return mdl
 
+def evaluate_model(mdl, X_trn, y_trn, X_tst, y_tst, retrain: bool = False):
+    mdl.fit(X_trn, y_trn)
+    # evaluate on hold-out set
+    preds = mdl.predict(X_tst)
+    metric = f1_score(y_tst, preds, average=None)  # "macro" / None
+    print(f"TST: {np.mean(metric):.6f}: {metric}", file=sys.stderr)
+    # evaluate on train set
+    preds = mdl.predict(X_trn)
+    metric = f1_score(y_trn, preds, average=None)  # "macro" / None
+    print(f"TRN: {np.mean(metric):.6f}: {metric}", file=sys.stderr)
+
+    # retrain on full data
+    # mdl.fit(X, y)
+    return mdl
 
 def main():
     T, C, F = cast_line_elements(input(), int)  # T, C, F
@@ -149,10 +160,13 @@ def main():
         T, C, B
     )
 
-    mdl = Baseline(T, C, [2, 3])
-    # mdl = RFModel(T, C)
-    mdl = evaluate_model(mdl, train_data_categories, train_data_targets)
-    # mdl.fit(train_data_categories, train_data_targets)
+    # mdl = Baseline(T, C, [2, 3])
+    mdl = RFModel(T, C)
+    # X_trn = train_data_categories
+    X_trn = np.concatenate([train_data_categories, train_data_vectors], axis=1)
+    y_trn = train_data_targets
+    mdl = split_data_and_evaluate_model(mdl, X_trn, y_trn, retrain=True)
+    # print(mdl.mdl.feature_importances_, file=sys.stderr)
 
     print("test")
     sys.stdout.flush()
@@ -161,13 +175,26 @@ def main():
     X_tst = []
     for i in range(test_count):
         input_line = input().strip().split()
-        test_data_category = cast_line_elements(input_line[:C], int)
-        X_tst.append(test_data_category)
+        data_category = cast_line_elements(input_line[:C], int)
+        data_vectors = cast_line_elements(input_line[C :], float)
+        X_tst.append(data_category + data_vectors)
+
+    fin_tst_targets = "data/01.a"
+    if os.path.exists(fin_tst_targets):
+        y_tst = []
+        with open(fin_tst_targets, "r") as fin:
+            _ = fin.readline()
+            for i in range(test_count):
+                y_tst.append(cast_line_elements(fin.readline().strip().split(), int))
+
+        # mdl = RFModel(T, C)
+        mdl = evaluate_model(mdl, X_trn, y_trn, X_tst, y_tst, retrain=False)
+
     # make predictions and extract non-zero indexes for each topic
     all_good_indexes = []
     preds = mdl.predict(X_tst)
     for t in range(T):
-        all_good_indexes.append(preds[:,t].nonzero()[0].tolist())
+        all_good_indexes.append(preds[:, t].nonzero()[0].tolist())
 
     # output the collected results
     total_good_items = [str(len(x)) for x in all_good_indexes]
