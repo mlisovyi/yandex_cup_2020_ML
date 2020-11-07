@@ -6,21 +6,26 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 
-def read_train_data(T, C, B):
+
+def read_train_data(
+    T: int, C: int, B: int
+) -> (List[List[int]], List[List[int]], List[List[float]]):
     print("req 0 0 {}".format(B))  # requesting all possible data
     sys.stdout.flush()
     train_count = int(input())
-    train_data_targets = []
-    train_data_categories = []
-    train_data_vectors = []
+    data_targets = []
+    data_categories = []
+    data_vectors = []
     for _ in range(train_count):
         input_line = input().strip().split()
-        train_data_targets.append(cast_line_elements(input_line[:T], int))
-        train_data_categories.append(cast_line_elements(input_line[T : T + C], int))
-        train_data_vectors.append(cast_line_elements(input_line[T + C :], float))
-    return train_data_targets, train_data_categories, train_data_vectors
+        data_targets.append(cast_line_elements(input_line[:T], int))
+        data_categories.append(cast_line_elements(input_line[T : T + C], int))
+        data_vectors.append(cast_line_elements(input_line[T + C :], float))
+    return data_targets, data_categories, data_vectors
+
 
 
 def make_dict_key(categories, one_comb, C):
@@ -55,31 +60,6 @@ def prepare_statistic_dict(
     return statistic_dict
 
 
-def get_good_indexes(T, C, test_count, all_combinations, cool_dict_keys):
-    all_good_indexes = [set() for t in range(T)]
-
-    for i in range(test_count):
-        input_line = input().strip().split()
-        test_data_category = cast_line_elements(input_line[:C], int)
-        test_data_vector = cast_line_elements(input_line[C:], float)
-        preds = predict_one_line(
-            T, C, all_combinations, cool_dict_keys, test_data_category
-        )
-        for t in range(T):
-            if preds[t] == 1:
-                all_good_indexes[t].add(i)
-    return all_good_indexes
-
-
-def predict_one_line(T, C, all_combinations, cool_dict_keys, test_data_category):
-    preds = [0] * T
-    for one_comb in all_combinations:
-        dict_key = make_dict_key(test_data_category, one_comb, C)
-        for t in range(T):
-            if dict_key in cool_dict_keys[t]:
-                preds[t] = 1
-    return preds
-
 
 def cast_line_elements(line, type_):
     in_list = line
@@ -113,42 +93,50 @@ class Baseline:
                 if freq["target_items"][i] / freq["total_items"] > self.p[i]:
                     self.cool_dict_keys[i].add(combo)
 
-    def predict(self, X):
+    def predict(self, X) -> np.ndarray:
         preds = []
         for i in range(len(X)):
             preds.append(self.predict_one_line(X[i]))
+        return np.array(preds)
+
+    def predict_one_line(self, X) -> List:
+        preds = [0] * self.T
+        for one_comb in self.all_combinations:
+            dict_key = make_dict_key(X, one_comb, self.C)
+            for t in range(self.T):
+                if dict_key in self.cool_dict_keys[t]:
+                    preds[t] = 1
         return preds
+
+
+@dataclass
+class RFModel:
+    T: int
+    C: int
+    mdl: RandomForestClassifier = RandomForestClassifier(n_estimators=10, max_depth=4)
+
+    def fit(self, X, y, **kwargs):
+        self.mdl = self.mdl.fit(X, y, **kwargs)
+        return self.mdl
+
+    def predict(self, X):
+        return self.mdl.predict(X)
 
     def predict_one_line(self, X):
-        preds = predict_one_line(
-            self.T, self.C, self.all_combinations, self.cool_dict_keys, X
-        )
-        return preds
-
-    def get_good_indexes(self, test_count):
-        all_good_indexes = [set() for t in range(self.T)]
-
-        for i in range(test_count):
-            input_line = input().strip().split()
-            test_data_category = cast_line_elements(input_line[: self.C], int)
-            preds = self.predict_one_line(test_data_category)
-            for t in range(self.T):
-                if preds[t] == 1:
-                    all_good_indexes[t].add(i)
-        return all_good_indexes
+        return self.predict([X])[0]
 
 
 def evaluate_model(mdl, X, y):
     X_trn, X_tst, y_trn, y_tst = train_test_split(X, y, test_size=0.2, random_state=314)
 
+    # evaluate on hold-out set
     mdl.fit(X_trn, y_trn)
     preds = mdl.predict(X_tst)
-
-    metric = f1_score(y_tst, preds, average=None) # "macro" / None
-
-    # mdl.fit(train_data_categories, train_data_targets)
-
+    metric = f1_score(y_tst, preds, average=None)  # "macro" / None
     print(f"{np.mean(metric):.6f}: {metric}", file=sys.stderr)
+
+    # retrain on full data
+    mdl.fit(X, y)
     return mdl
 
 
@@ -162,14 +150,26 @@ def main():
     )
 
     mdl = Baseline(T, C, [2, 3])
+    # mdl = RFModel(T, C)
     mdl = evaluate_model(mdl, train_data_categories, train_data_targets)
     # mdl.fit(train_data_categories, train_data_targets)
 
     print("test")
     sys.stdout.flush()
     test_count = int(input())
-    all_good_indexes = mdl.get_good_indexes(test_count)
+    # read in whole test data
+    X_tst = []
+    for i in range(test_count):
+        input_line = input().strip().split()
+        test_data_category = cast_line_elements(input_line[:C], int)
+        X_tst.append(test_data_category)
+    # make predictions and extract non-zero indexes for each topic
+    all_good_indexes = []
+    preds = mdl.predict(X_tst)
+    for t in range(T):
+        all_good_indexes.append(preds[:,t].nonzero()[0].tolist())
 
+    # output the collected results
     total_good_items = [str(len(x)) for x in all_good_indexes]
     print(" ".join(total_good_items))
     for good_indexes in all_good_indexes:
