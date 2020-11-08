@@ -1,6 +1,7 @@
 # data files
 *.jpeg
 data/
+tmp/
 
 # VSC project
 .vscode
