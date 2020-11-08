@@ -203,7 +203,6 @@ class DataReader:
         self.X_v += batch[2]
 
 
-
 def cast_line_elements(line, type_):
     in_list = line
     if isinstance(line, str):
@@ -227,9 +226,7 @@ class Baseline:
             self.all_combinations += list(combinations(range(self.C), n))
 
     def fit(self, X, y):
-        statistic_dict = prepare_statistic_dict(
-            self.T, self.C, self.all_combinations, y, X, None
-        )
+        statistic_dict = self.prepare_statistic_dict(y, X)
         self.cool_dict_keys = [set() for t in range(self.T)]
         for combo, freq in statistic_dict.items():
             for i in range(self.T):
@@ -245,37 +242,30 @@ class Baseline:
     def predict_one_line(self, X) -> List:
         preds = [0] * self.T
         for one_comb in self.all_combinations:
-            dict_key = make_dict_key(X, one_comb, self.C)
+            dict_key = self.make_dict_key(X, one_comb)
             for t in range(self.T):
                 if dict_key in self.cool_dict_keys[t]:
                     preds[t] = 1
         return preds
 
-    def make_dict_key(categories, one_comb, C):
+    def make_dict_key(self, categories, one_comb):
         """Prepare dictionary key for the Baseline model
 
         Args:
             categories ([type]): [description]
             one_comb ([type]): [description]
-            C ([type]): [description]
 
         Returns:
             [type]: [description]
         """
-        dict_key = [None] * C
+        dict_key = [None] * self.C
         for i in one_comb:
             dict_key[i] = categories[i]
         dict_key = tuple(dict_key)
         return dict_key
 
-
     def prepare_statistic_dict(
-        T,
-        C,
-        all_combinations,
-        train_data_targets,
-        train_data_categories,
-        train_data_vectors,
+        self, train_data_targets, train_data_categories,
     ):
         """Compute how ofter each key combo appeared and how ofter targets were fired.
 
@@ -285,25 +275,25 @@ class Baseline:
             all_combinations ([type]): [description]
             train_data_targets ([type]): [description]
             train_data_categories ([type]): [description]
-            train_data_vectors ([type]): [description]
 
         Returns:
             [type]: [description]
         """
         statistic_dict = {}
         for targets, categories in zip(train_data_targets, train_data_categories):
-            for one_comb in all_combinations:
-                dict_key = make_dict_key(categories, one_comb, C)
+            for one_comb in self.all_combinations:
+                dict_key = self.make_dict_key(categories, one_comb)
                 if dict_key not in statistic_dict:
                     statistic_dict[dict_key] = {
                         "total_items": 0,
-                        "target_items": [0 for t in range(T)],
+                        "target_items": [0 for t in range(self.T)],
                     }
                 statistic_dict[dict_key]["total_items"] += 1
                 statistic_dict[dict_key]["target_items"] = list(
                     map(sum, zip(targets, statistic_dict[dict_key]["target_items"]))
                 )
         return statistic_dict
+
 
 @dataclass
 class SKLModel:
@@ -314,6 +304,7 @@ class SKLModel:
     Returns:
         [type]: [description]
     """
+
     T: int
     C: int
     mdl: RandomForestClassifier = RandomForestClassifier()
