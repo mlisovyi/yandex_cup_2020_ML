@@ -14,16 +14,19 @@ from final.solution import cast_line_elements
 
 DEBUG = True
 
+
 class Verdict:
     OK = 0
     WA = 1
     PE = 2
     FAIL = 10
 
+
 def verify(cond, message):
     if not cond:
         print(message, file=sys.stderr)
         sys.exit(Verdict.PE)
+
 
 class FileLinesHandle:
     def __init__(self, file, position):
@@ -52,10 +55,11 @@ class FileLinesHandle:
                 result = line
                 print(line)
             else:
-                print(line, end='')
+                print(line, end="")
         assert result is not None
         sys.stdout.flush()
         return result
+
 
 def main():
     try:
@@ -63,10 +67,10 @@ def main():
             start_time = datetime.datetime.now()
 
             first_line = input_file.readline()
-            print(first_line, end='')
+            print(first_line, end="")
             target_count, class_count, _ = cast_line_elements(first_line, int)
             class_counts = input_file.readline()
-            print(class_counts, end='')
+            print(class_counts, end="")
             class_counts = cast_line_elements(class_counts, int)
             budget = int(input_file.readline())
             print(budget)
@@ -79,54 +83,82 @@ def main():
             constrained_train = [[] for class_index in range(class_count)]
             for handles, class_count in zip(constrained_train, class_counts):
                 for _ in range(class_count):
-                    handles.append(FileLinesHandle(input_file, start_position + offsets[offset_index]))
+                    handles.append(
+                        FileLinesHandle(
+                            input_file, start_position + offsets[offset_index]
+                        )
+                    )
                     offset_index += 1
             test_offset = start_position + offsets[offset_index]
             assert offset_index == len(offsets) - 1
 
             if DEBUG:
-                print(f'Initialized in {datetime.datetime.now() - start_time}', file=sys.stderr)
+                print(
+                    f"Initialized in {datetime.datetime.now() - start_time}",
+                    file=sys.stderr,
+                )
             start_time = datetime.datetime.now()
-            
+
             while True:
                 try:
                     request = input().strip().split()
                 except:
-                    verify(False, 'Could not read line')
-                if request[0] == 'req':
+                    verify(False, "Could not read line")
+                if request[0] == "req":
                     try:
-                        class_index, class_value, count = cast_line_elements(request[1:], int)
+                        class_index, class_value, count = cast_line_elements(
+                            request[1:], int
+                        )
                     except:
-                        verify(False, f'Invalid request: {request}')
-                    verify(count > 0, f'Invalid count: {count}')
-                    verify(count <= budget, f'Budget exceeded')
+                        verify(False, f"Invalid request: {request}")
+                    verify(count > 0, f"Invalid count: {count}")
+                    verify(count <= budget, f"Budget exceeded")
                     if class_index == 0:
-                        verify(class_value == 0, f'Invalid request: {request}')
+                        verify(class_value == 0, f"Invalid request: {request}")
                         budget -= global_train.respond(count)
                     else:
-                        verify(0 < class_index <= class_count, f'Invalid class index: {request}')
+                        verify(
+                            0 < class_index <= class_count,
+                            f"Invalid class index: {request}",
+                        )
                         class_index -= 1
-                        verify(0 <= class_value < class_counts[class_index], f'Invalid class value in request: {request}')
-                        budget -= constrained_train[class_index][class_value].respond(count)
-                elif request[0] == 'test':
-                    verify(len(request) == 1, f'Invalid request: {request}')
+                        verify(
+                            0 <= class_value < class_counts[class_index],
+                            f"Invalid class value in request: {request}",
+                        )
+                        budget -= constrained_train[class_index][class_value].respond(
+                            count
+                        )
+                elif request[0] == "test":
+                    verify(len(request) == 1, f"Invalid request: {request}")
                     break
                 else:
-                    verify(False, f'Invalid request: {request}')
+                    verify(False, f"Invalid request: {request}")
 
             if DEBUG:
-                print(f'Requests processed in {datetime.datetime.now() - start_time}', file=sys.stderr)
+                print(
+                    f"{datetime.datetime.now()} Requests processed in {datetime.datetime.now() - start_time}",
+                    file=sys.stderr,
+                )
             start_time = datetime.datetime.now()
 
             input_file.seek(test_offset)
             test_count = int(input_file.readline())
             print(test_count)
-            for _ in range(test_count):
-                print(input_file.readline(), end='')
+            print(f"{datetime.datetime.now()} publish test count", file=sys.stderr)
+            for i in range(test_count):
+                print(input_file.readline(), end="")
+                # if i < 10:
+                #     print(f'{datetime.datetime.now()} publish test sample {i}', file=sys.stderr)
+
+            print(f"{datetime.datetime.now()} before stdout flush", file=sys.stderr)
             sys.stdout.flush()
 
             if DEBUG:
-                print(f'Testset sent in {datetime.datetime.now() - start_time}', file=sys.stderr)
+                print(
+                    f"{datetime.datetime.now()} Testset sent in {datetime.datetime.now() - start_time}",
+                    file=sys.stderr,
+                )
             start_time = datetime.datetime.now()
 
             with open(sys.argv[2], "w") as output_file:
@@ -134,12 +166,18 @@ def main():
                 print(answer_counts, file=output_file)
                 try:
                     answer_counts = cast_line_elements(answer_counts, int)
-                    verify(len(answer_counts) == target_count, f'Invalid number of answer counts')
+                    verify(
+                        len(answer_counts) == target_count,
+                        f"Invalid number of answer counts",
+                    )
                 except:
-                    verify(False, f'Invalid answer counts: {answer_counts}')
+                    verify(False, f"Invalid answer counts: {answer_counts}")
 
                 for _, answer_count in enumerate(answer_counts):
-                    verify(0 < answer_count <= test_count, f'Invalid number of predicted positives: {answer_count}')
+                    verify(
+                        0 < answer_count <= test_count,
+                        f"Invalid number of predicted positives: {answer_count}",
+                    )
                     indexes = set()
                     for _ in range(answer_count):
                         index = input()
@@ -147,13 +185,18 @@ def main():
                         try:
                             index = int(index.strip())
                         except:
-                            verify(False, f'Invalid sample index: {index}')
-                        verify(0 <= index < test_count, f'Invalid sample index: {index}')
-                        verify(index not in indexes, f'Repeating sampling index: {index}')
+                            verify(False, f"Invalid sample index: {index}")
+                        # verify(0 <= index < test_count, f'Invalid sample index: {index}')
+                        verify(
+                            index not in indexes, f"Repeating sampling index: {index}"
+                        )
                         indexes.add(index)
 
             if DEBUG:
-                print(f'Got answers in {datetime.datetime.now() - start_time}', file=sys.stderr)
+                print(
+                    f"{datetime.datetime.now()} Got answers in {datetime.datetime.now() - start_time}",
+                    file=sys.stderr,
+                )
 
             sys.exit(Verdict.OK)
 
@@ -161,5 +204,6 @@ def main():
         traceback.print_exc(file=sys.stderr)
         sys.exit(Verdict.FAIL)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
