@@ -397,7 +397,8 @@ def main():
     # dr.read_train_data_single_batch(B)
     # dr.read_train_data_equal_number_all_categories(B)
     # dr.read_train_data_weighted_number_all_categories(B)
-    dr.read_train_data_half_random_half_best_categories(B)
+    dr.read_train_data_half_weighted_half_equal(B)
+    # dr.read_train_data_half_random_half_best_categories(B)
     y_trn, X_cat_trn, X_vec_trn = dr.get_data()
 
     # choose the model to use
